@@ -72,6 +72,8 @@ class WorkoutSession(Base):
         Enum(SessionStatus, name="session_status"), nullable=False, default=SessionStatus.active
     )
     notes = Column(Text)
+    xp_earned = Column(Integer, default=0, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     exercises = relationship(

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from typing import Optional, List
+from datetime import datetime, date
 from decimal import Decimal
 from .model import UserRole, FitnessGoal
 
@@ -16,6 +16,8 @@ class UserOut(BaseModel):
     current_level: int
     current_streak: int
     fitcoin_balance: Decimal
+    last_active_date: Optional[date] = None
+    allergens: List[str] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -27,6 +29,10 @@ class UserUpdate(BaseModel):
     fitness_goal: Optional[FitnessGoal] = None
     phone: Optional[str] = None
     tdee: Optional[int] = None
+
+
+class UserUpdateAllergens(BaseModel):
+    allergens: List[str]
 
 
 class PassportOut(BaseModel):

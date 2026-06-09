@@ -35,6 +35,7 @@ class FoodProduct(Base):
     is_available = Column(Boolean, default=True, nullable=False)
     avg_rating = Column(Numeric(2, 1), default=0, nullable=False)
     total_reviews = Column(Integer, default=0, nullable=False)
+    total_orders = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     reviews = relationship("FoodReview", back_populates="product")

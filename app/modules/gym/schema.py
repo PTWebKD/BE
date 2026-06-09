@@ -87,6 +87,8 @@ class SessionOut(BaseModel):
     duration_min: Optional[int] = None
     status: SessionStatus
     notes: Optional[str] = None
+    xp_earned: int = 0
+    completed_at: Optional[datetime] = None
     exercises: List[ExerciseOut] = []
     created_at: datetime
 

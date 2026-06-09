@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, Enum, Text, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, Enum, Text, DateTime, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import JSON
 from app.core.database import Base
@@ -35,6 +35,8 @@ class User(Base):
     fitcoin_balance = Column(Numeric(12, 2), default=0, nullable=False)
     tdee = Column(Integer)
     referred_by = Column(Integer, ForeignKey("users.user_id", ondelete="SET NULL"))
+    last_active_date = Column(Date, nullable=True)
+    allergens = Column(JSON, default=list, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     passport = relationship("FitnessPassport", back_populates="user", uselist=False)

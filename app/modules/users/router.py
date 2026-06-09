@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from .schema import UserOut, UserUpdate, PassportOut
+from .schema import UserOut, UserUpdate, UserUpdateAllergens, PassportOut
 from .model import User
 from . import service
 
@@ -26,6 +26,17 @@ async def update_me(
 ):
     updated = await service.update_user(db, user, data)
     return ok(UserOut.model_validate(updated).model_dump())
+
+
+@router.put("/me/allergens")
+async def update_my_allergens(
+    data: UserUpdateAllergens,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user.allergens = data.allergens
+    await db.flush()
+    return ok(UserOut.model_validate(user).model_dump())
 
 
 @router.get("/me/passport")
