@@ -28,6 +28,9 @@ class ProductOut(BaseModel):
     protein_g: Decimal
     carb_g: Decimal
     fat_g: Decimal
+    ingredients: List = []
+    allergens: List = []
+    images: List[str] = []
     category: Optional[str] = None
     badge: Optional[str] = None
     is_available: bool
