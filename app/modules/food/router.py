@@ -41,6 +41,34 @@ async def list_products(
     return ok([ProductOut.model_validate(p).model_dump() for p in items])
 
 
+@router.get("/vendor/products")
+async def vendor_products(
+    vendor: User = Depends(require_vendor),
+    db: AsyncSession = Depends(get_db),
+):
+    items = await service.get_vendor_products(db, vendor.user_id)
+    return ok([ProductOut.model_validate(p).model_dump() for p in items])
+
+
+@router.get("/vendor/orders")
+async def vendor_orders(
+    vendor: User = Depends(require_vendor),
+    db: AsyncSession = Depends(get_db),
+):
+    orders = await service.get_vendor_orders(db, vendor.user_id)
+    return ok([OrderOut.model_validate(o).model_dump() for o in orders])
+
+
+@router.patch("/products/{product_id}/availability")
+async def toggle_availability(
+    product_id: int,
+    vendor: User = Depends(require_vendor),
+    db: AsyncSession = Depends(get_db),
+):
+    p = await service.toggle_product_availability(db, vendor, product_id)
+    return ok(ProductOut.model_validate(p).model_dump())
+
+
 @router.get("/products/{product_id}")
 async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
     p = await service.get_product(db, product_id)

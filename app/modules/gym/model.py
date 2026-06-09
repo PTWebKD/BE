@@ -96,3 +96,20 @@ class ExerciseLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     session = relationship("WorkoutSession", back_populates="exercises")
+
+
+class AnnouncementPriority(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class GymAnnouncement(Base):
+    __tablename__ = "gym_announcements"
+
+    announcement_id = Column(Integer, primary_key=True)
+    gym_id = Column(Integer, ForeignKey("gyms.gym_id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(200), nullable=False)
+    body = Column(Text, nullable=False)
+    priority = Column(Enum(AnnouncementPriority, name="announcement_priority"), default=AnnouncementPriority.medium, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

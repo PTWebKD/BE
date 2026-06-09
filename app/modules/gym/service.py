@@ -4,8 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.dependencies import err
 from app.modules.users.model import User, FitnessPassport
-from .model import Gym, GymMembership, WorkoutSession, ExerciseLog, MembershipStatus, SessionStatus
-from .schema import MembershipCreate, SessionCreate, ExerciseCreate, GymCreate
+from .model import Gym, GymMembership, WorkoutSession, ExerciseLog, MembershipStatus, SessionStatus, GymAnnouncement
+from .schema import MembershipCreate, SessionCreate, ExerciseCreate, GymCreate, AnnouncementCreate
 
 
 async def list_gyms(db: AsyncSession) -> list:
@@ -235,6 +235,49 @@ async def complete_session(db: AsyncSession, user: User, session_id: int) -> dic
         "new_streak": user.current_streak,
         "badges_earned": badges_earned,
     }
+
+
+async def get_session(db: AsyncSession, user_id: int, session_id: int) -> WorkoutSession:
+    r = await db.execute(
+        select(WorkoutSession)
+        .where(WorkoutSession.session_id == session_id, WorkoutSession.user_id == user_id)
+        .options(selectinload(WorkoutSession.exercises))
+    )
+    session = r.scalar_one_or_none()
+    if not session:
+        err("NOT_FOUND", "Session not found or not yours", 404)
+    return session
+
+
+async def get_gym_announcements(db: AsyncSession, gym_id: int) -> list:
+    r = await db.execute(
+        select(GymAnnouncement).where(GymAnnouncement.gym_id == gym_id).order_by(GymAnnouncement.created_at.desc())
+    )
+    return r.scalars().all()
+
+
+async def create_announcement(db: AsyncSession, owner: User, data: AnnouncementCreate) -> GymAnnouncement:
+    r = await db.execute(select(Gym).where(Gym.owner_id == owner.user_id))
+    gym = r.scalar_one_or_none()
+    if not gym:
+        err("NOT_FOUND", "No gym found for this owner", 404)
+    ann = GymAnnouncement(gym_id=gym.gym_id, **data.model_dump())
+    db.add(ann)
+    await db.flush()
+    return ann
+
+
+async def delete_announcement(db: AsyncSession, owner: User, announcement_id: int) -> None:
+    r = await db.execute(select(GymAnnouncement).where(GymAnnouncement.announcement_id == announcement_id))
+    ann = r.scalar_one_or_none()
+    if not ann:
+        err("NOT_FOUND", "Announcement not found", 404)
+    # Verify ownership via gym
+    r2 = await db.execute(select(Gym).where(Gym.gym_id == ann.gym_id, Gym.owner_id == owner.user_id))
+    if not r2.scalar_one_or_none():
+        err("FORBIDDEN", "Not your gym's announcement", 403)
+    await db.delete(ann)
+    await db.flush()
 
 
 async def suggest_muscle_group(db: AsyncSession, user_id: int) -> dict:

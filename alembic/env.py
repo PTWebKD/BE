@@ -12,7 +12,7 @@ if config.config_file_name is not None:
 from app.core.database import Base  # noqa
 from app.modules.users.model import User, FitnessPassport, Follow  # noqa
 from app.modules.auth.model import GuestOTP  # noqa
-from app.modules.gym.model import Gym, GymMembership, WorkoutSession, ExerciseLog  # noqa
+from app.modules.gym.model import Gym, GymMembership, WorkoutSession, ExerciseLog, GymAnnouncement  # noqa
 from app.modules.food.model import FoodProduct, FoodOrder, FoodReview  # noqa
 from app.modules.gear.model import GearItem, GearLifecycle, GearTransaction  # noqa
 from app.modules.gamification.model import Challenge, UserChallenge, Badge  # noqa

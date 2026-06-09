@@ -106,3 +106,19 @@ class SessionCompleteOut(BaseModel):
 class MuscleGroupSuggestion(BaseModel):
     suggested_muscle_group: str
     reason: str
+
+
+class AnnouncementCreate(BaseModel):
+    title: str
+    body: str
+    priority: str = "medium"
+
+
+class AnnouncementOut(BaseModel):
+    announcement_id: int
+    gym_id: int
+    title: str
+    body: str
+    priority: str
+    created_at: datetime
+    model_config = {"from_attributes": True}

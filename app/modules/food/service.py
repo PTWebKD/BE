@@ -148,3 +148,26 @@ async def create_review(
 async def get_product_reviews(db: AsyncSession, product_id: int) -> list:
     r = await db.execute(select(FoodReview).where(FoodReview.product_id == product_id))
     return r.scalars().all()
+
+
+async def get_vendor_products(db: AsyncSession, vendor_id: int) -> list:
+    r = await db.execute(
+        select(FoodProduct).where(FoodProduct.vendor_id == vendor_id).order_by(FoodProduct.created_at.desc())
+    )
+    return r.scalars().all()
+
+
+async def get_vendor_orders(db: AsyncSession, vendor_id: int) -> list:
+    r = await db.execute(
+        select(FoodOrder).where(FoodOrder.vendor_id == vendor_id).order_by(FoodOrder.created_at.desc())
+    )
+    return r.scalars().all()
+
+
+async def toggle_product_availability(db: AsyncSession, vendor: User, product_id: int) -> FoodProduct:
+    p = await get_product(db, product_id)
+    if p.vendor_id != vendor.user_id:
+        err("FORBIDDEN", "Not your product", 403)
+    p.is_available = not p.is_available
+    await db.flush()
+    return p
