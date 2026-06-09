@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -31,6 +31,27 @@ async def get_current_user(
     if not user:
         err("UNAUTHORIZED", "User not found", 401)
     return user
+
+
+async def get_optional_user(
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> "User | None":
+    """Return the current user from the Bearer token, or None if no/invalid token."""
+    from app.modules.users.model import User
+
+    if not authorization:
+        return None
+    try:
+        token_value = authorization.replace("Bearer ", "").strip()
+        payload = decode_token(token_value)
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        result = await db.execute(select(User).where(User.user_id == int(user_id)))
+        return result.scalar_one_or_none()
+    except Exception:
+        return None
 
 
 def require_role(*roles: str):

@@ -11,6 +11,7 @@ from .modules.gamification.router import router as gamification_router
 from .modules.fitcoin.router import router as fitcoin_router
 from .modules.social.router import router as social_router
 from .modules.notifications.router import router as notif_router
+from .modules.ai_coaching.router import router as ai_router
 
 app = FastAPI(
     title="FitFuel+ API",
@@ -48,6 +49,7 @@ app.include_router(gamification_router, prefix="/api/gamification", tags=["Gamif
 app.include_router(fitcoin_router, prefix="/api/fitcoin", tags=["FitCoin"])
 app.include_router(social_router, prefix="/api/social", tags=["Social"])
 app.include_router(notif_router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(ai_router, prefix="/api/ai", tags=["AI Coaching"])
 
 
 @app.get("/health", tags=["Health"])
