@@ -52,7 +52,7 @@ app.include_router(notif_router, prefix="/api/notifications", tags=["Notificatio
 app.include_router(ai_router, prefix="/api/ai", tags=["AI Coaching"])
 
 
-@app.get("/", tags=["Health"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"])
 async def root():
     return {"status": "ok", "message": "FitFuel+ API is running"}
 
