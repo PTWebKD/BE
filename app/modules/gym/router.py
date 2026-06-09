@@ -6,7 +6,6 @@ from app.modules.users.model import User
 from .schema import (
     GymCreate, GymOut, MembershipCreate, MembershipOut,
     SessionCreate, SessionOut, ExerciseCreate, ExerciseOut,
-    SessionCompleteOut, MuscleGroupSuggestion,
 )
 from . import service
 

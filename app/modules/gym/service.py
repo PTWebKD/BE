@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -92,6 +92,9 @@ async def log_exercise(
     session = r.scalar_one_or_none()
     if not session:
         err("NOT_FOUND", "Session not found or not yours", 404)
+    if session.status != SessionStatus.active:
+        err("BAD_REQUEST", "Cannot log exercises on a completed or cancelled session", 400)
+    _check_session_editable(session)
 
     # PR detection (BR-31): best volume = max(weight × reps) across all sets
     prev = await db.execute(
@@ -174,13 +177,13 @@ async def complete_session(db: AsyncSession, user: User, session_id: int) -> dic
 
     user.last_active_date = today
 
-    # Load passport (should exist for all members)
-    passport = user.passport
-    if passport is None:
-        r2 = await db.execute(
-            select(FitnessPassport).where(FitnessPassport.user_id == user.user_id)
-        )
-        passport = r2.scalar_one_or_none()
+    # Load passport explicitly to avoid lazy-load crash in async SQLAlchemy (MissingGreenlet)
+    r_passport = await db.execute(
+        select(FitnessPassport).where(FitnessPassport.user_id == user.user_id)
+    )
+    passport = r_passport.scalar_one_or_none()
+    if not passport:
+        err("NOT_FOUND", "Fitness passport not found", 404)
 
     if passport and user.current_streak > (passport.longest_streak or 0):
         passport.longest_streak = user.current_streak
@@ -195,7 +198,7 @@ async def complete_session(db: AsyncSession, user: User, session_id: int) -> dic
     if passport is not None:
         existing_badges = [b.get("badge") for b in (passport.milestone_badges or [])]
         for days, coins, badge_name in streak_milestones:
-            if user.current_streak == days and badge_name not in existing_badges:
+            if user.current_streak >= days and badge_name not in existing_badges:
                 user.fitcoin_balance = (user.fitcoin_balance or 0) + coins
                 milestone_badges_list = list(passport.milestone_badges or [])
                 milestone_badges_list.append(
@@ -236,8 +239,6 @@ async def complete_session(db: AsyncSession, user: User, session_id: int) -> dic
 
 async def suggest_muscle_group(db: AsyncSession, user_id: int) -> dict:
     """Suggest the least-trained muscle group from the last 7 days (BR-32/34)."""
-    from datetime import timedelta
-
     # Priority order for tiebreak (BR-34)
     priority = ["legs", "back", "chest", "shoulders", "arms", "core"]
 
