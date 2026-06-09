@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
@@ -93,3 +93,16 @@ class SessionOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SessionCompleteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    session: SessionOut
+    xp_earned: int
+    new_streak: int
+    badges_earned: list[str]
+
+
+class MuscleGroupSuggestion(BaseModel):
+    suggested_muscle_group: str
+    reason: str

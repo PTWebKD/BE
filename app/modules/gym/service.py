@@ -1,9 +1,10 @@
+from datetime import datetime, date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.dependencies import err
-from app.modules.users.model import User
-from .model import Gym, GymMembership, WorkoutSession, ExerciseLog, MembershipStatus
+from app.modules.users.model import User, FitnessPassport
+from .model import Gym, GymMembership, WorkoutSession, ExerciseLog, MembershipStatus, SessionStatus
 from .schema import MembershipCreate, SessionCreate, ExerciseCreate, GymCreate
 
 
@@ -74,6 +75,11 @@ async def get_my_sessions(db: AsyncSession, user_id: int) -> list:
     return r.scalars().all()
 
 
+def _best_volume(sets) -> float:
+    """Return the best (max) weight*reps volume across all sets (DB JSON dicts)."""
+    return max((s.get("weight", 0) * s.get("reps", 0) for s in (sets or [])), default=0)
+
+
 async def log_exercise(
     db: AsyncSession, user: User, session_id: int, data: ExerciseCreate
 ) -> ExerciseLog:
@@ -87,7 +93,7 @@ async def log_exercise(
     if not session:
         err("NOT_FOUND", "Session not found or not yours", 404)
 
-    # PR detection: check if this is the heaviest weight for this exercise
+    # PR detection (BR-31): best volume = max(weight × reps) across all sets
     prev = await db.execute(
         select(ExerciseLog)
         .join(WorkoutSession, WorkoutSession.session_id == ExerciseLog.session_id)
@@ -97,12 +103,10 @@ async def log_exercise(
         )
     )
     all_prev = prev.scalars().all()
-    max_prev = max(
-        (max((s.get("weight", 0) for s in log.sets or []), default=0) for log in all_prev),
-        default=0,
-    )
-    new_max = max((s.weight for s in data.sets), default=0)
-    is_pr = new_max > max_prev and new_max > 0
+    max_prev = max((_best_volume(log.sets) for log in all_prev), default=0)
+    # data.sets is Pydantic objects → use attribute access
+    new_best = max((s.weight * s.reps for s in data.sets), default=0)
+    is_pr = new_best > max_prev and new_best > 0
 
     log = ExerciseLog(
         session_id=session_id,
@@ -125,3 +129,152 @@ async def get_my_records(db: AsyncSession, user_id: int) -> list:
         .order_by(ExerciseLog.created_at.desc())
     )
     return r.scalars().all()
+
+
+def _check_session_editable(session: WorkoutSession) -> None:
+    """BR-33: sessions are locked from editing 24 hours after completion."""
+    if session.status == SessionStatus.done:
+        if session.completed_at and (datetime.utcnow() - session.completed_at).total_seconds() > 86400:
+            err("FORBIDDEN", "Session locked — cannot edit after 24 hours (BR-33)", 403)
+
+
+async def complete_session(db: AsyncSession, user: User, session_id: int) -> dict:
+    """Mark a session as done, award XP, update streak, check milestones (BR-18/20/21/22)."""
+    # 1. Fetch session
+    r = await db.execute(
+        select(WorkoutSession)
+        .where(
+            WorkoutSession.session_id == session_id,
+            WorkoutSession.user_id == user.user_id,
+        )
+        .options(selectinload(WorkoutSession.exercises))
+    )
+    session = r.scalar_one_or_none()
+    if not session:
+        err("NOT_FOUND", "Session not found or not yours", 404)
+    if session.status != SessionStatus.active:
+        err("BAD_REQUEST", "Session is already done or cancelled", 400)
+
+    # 2. Calculate XP (BR-18)
+    total_sets = sum(len(ex.sets or []) for ex in session.exercises)
+    xp = max(total_sets * 10, 20)
+    pr_count = sum(1 for ex in session.exercises if ex.is_pr)
+    xp += pr_count * 50
+
+    # 3. Update streak (BR-20/21)
+    today = date.today()
+    yesterday = date.fromordinal(today.toordinal() - 1)
+    last_active = user.last_active_date
+
+    if last_active is None or last_active < yesterday:
+        user.current_streak = 1
+    elif last_active == yesterday:
+        user.current_streak = (user.current_streak or 0) + 1
+    # if last_active == today: keep streak unchanged
+
+    user.last_active_date = today
+
+    # Load passport (should exist for all members)
+    passport = user.passport
+    if passport is None:
+        r2 = await db.execute(
+            select(FitnessPassport).where(FitnessPassport.user_id == user.user_id)
+        )
+        passport = r2.scalar_one_or_none()
+
+    if passport and user.current_streak > (passport.longest_streak or 0):
+        passport.longest_streak = user.current_streak
+
+    # 4. Check streak milestones (BR-22)
+    badges_earned = []
+    streak_milestones = [
+        (7, 50, "streak_7"),
+        (30, 200, "streak_30"),
+        (100, 500, "streak_100"),
+    ]
+    if passport is not None:
+        existing_badges = [b.get("badge") for b in (passport.milestone_badges or [])]
+        for days, coins, badge_name in streak_milestones:
+            if user.current_streak == days and badge_name not in existing_badges:
+                user.fitcoin_balance = (user.fitcoin_balance or 0) + coins
+                milestone_badges_list = list(passport.milestone_badges or [])
+                milestone_badges_list.append(
+                    {"badge": badge_name, "earned_at": datetime.utcnow().isoformat()}
+                )
+                passport.milestone_badges = milestone_badges_list
+                badges_earned.append(badge_name)
+
+    # 5. Update FitnessPassport totals
+    if passport is not None:
+        passport.total_sessions = (passport.total_sessions or 0) + 1
+        session_volume = sum(
+            s.get("weight", 0) * s.get("reps", 0)
+            for ex in session.exercises
+            for s in (ex.sets or [])
+        )
+        passport.total_volume = (passport.total_volume or 0) + session_volume
+
+    # 6. Mark session done
+    session.status = SessionStatus.done
+    session.xp_earned = xp
+    session.completed_at = datetime.utcnow()
+
+    # 7. Update user XP
+    user.xp_total = (user.xp_total or 0) + xp
+
+    # 8. Flush
+    await db.flush()
+
+    # 9. Return result dict
+    return {
+        "session": session,
+        "xp_earned": xp,
+        "new_streak": user.current_streak,
+        "badges_earned": badges_earned,
+    }
+
+
+async def suggest_muscle_group(db: AsyncSession, user_id: int) -> dict:
+    """Suggest the least-trained muscle group from the last 7 days (BR-32/34)."""
+    from datetime import timedelta
+
+    # Priority order for tiebreak (BR-34)
+    priority = ["legs", "back", "chest", "shoulders", "arms", "core"]
+
+    # 1. Fetch done sessions from last 7 days with exercises
+    seven_days_ago = date.today() - timedelta(days=7)
+    r = await db.execute(
+        select(WorkoutSession)
+        .where(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.status == SessionStatus.done,
+            WorkoutSession.date >= seven_days_ago,
+        )
+        .options(selectinload(WorkoutSession.exercises))
+    )
+    sessions = r.scalars().all()
+
+    # 2. If no sessions, return first priority group
+    if not sessions:
+        return {
+            "suggested_muscle_group": "legs",
+            "reason": "No workouts in the last 7 days — legs are the highest priority muscle group to train.",
+        }
+
+    # 3. Count exercises per muscle group
+    counts: dict[str, int] = {g: 0 for g in priority}
+    for session in sessions:
+        for ex in session.exercises:
+            group = ex.muscle_group.value if hasattr(ex.muscle_group, "value") else str(ex.muscle_group)
+            if group in counts:
+                counts[group] += 1
+
+    # 4. Find the least-trained group, using priority order as tiebreak
+    min_count = min(counts.values())
+    least_trained = [g for g in priority if counts[g] == min_count]
+    suggested = least_trained[0]  # priority order already applied via list comprehension
+
+    return {
+        "suggested_muscle_group": suggested,
+        "reason": f"'{suggested}' has been trained only {min_count} time(s) in the last 7 days — it needs the most attention.",
+    }

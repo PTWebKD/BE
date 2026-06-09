@@ -6,6 +6,7 @@ from app.modules.users.model import User
 from .schema import (
     GymCreate, GymOut, MembershipCreate, MembershipOut,
     SessionCreate, SessionOut, ExerciseCreate, ExerciseOut,
+    SessionCompleteOut, MuscleGroupSuggestion,
 )
 from . import service
 
@@ -74,6 +75,32 @@ async def my_sessions(
 ):
     sessions = await service.get_my_sessions(db, user.user_id)
     return ok([SessionOut.model_validate(s).model_dump() for s in sessions])
+
+
+# IMPORTANT: /sessions/suggest MUST be defined before /sessions/{session_id}/...
+# routes to prevent FastAPI from matching "suggest" as a session_id integer.
+@router.get("/sessions/suggest")
+async def suggest_muscle(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await service.suggest_muscle_group(db, user.user_id)
+    return ok(result)
+
+
+@router.post("/sessions/{session_id}/complete")
+async def complete_session(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await service.complete_session(db, user, session_id)
+    return ok({
+        "session": SessionOut.model_validate(result["session"]).model_dump(),
+        "xp_earned": result["xp_earned"],
+        "new_streak": result["new_streak"],
+        "badges_earned": result["badges_earned"],
+    })
 
 
 @router.post("/sessions/{session_id}/exercises")
