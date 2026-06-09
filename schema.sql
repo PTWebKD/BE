@@ -186,6 +186,7 @@ CREATE TABLE food_products (
   is_available     BOOLEAN         NOT NULL DEFAULT true,
   avg_rating       DECIMAL(2,1)    NOT NULL DEFAULT 0 CHECK (avg_rating BETWEEN 0 AND 5),
   total_reviews    INT             NOT NULL DEFAULT 0,
+  total_orders     INT             NOT NULL DEFAULT 0,
   created_at       TIMESTAMP       NOT NULL DEFAULT NOW()
 );
 
