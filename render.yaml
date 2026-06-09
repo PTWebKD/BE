@@ -10,7 +10,7 @@ services:
       - key: SECRET_KEY
         sync: false
       - key: CORS_ORIGINS
-        value: "http://localhost:5173,https://fitfuel-fe.onrender.com"
+        value: "http://localhost:5173,http://localhost:3000,https://fe-ob5yiejcn-khangne-s-projects.vercel.app,https://*.vercel.app"
       - key: ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_DAYS
