@@ -20,9 +20,3 @@ class RecommendedDish(BaseModel):
     vendor_id: int
 
 
-class FoodRecommendationOut(BaseModel):
-    mode: str                       # "personalized" | "best_seller"
-    muscle_group: Optional[str]     # main group trained, None for best_seller mode
-    macro_focus: Optional[str]      # e.g. "high_protein_high_carb", None for best_seller
-    recommendations: list[RecommendedDish]
-    reason: str                     # human-readable explanation

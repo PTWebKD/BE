@@ -123,7 +123,7 @@ async def _query_personalized(
         .where(FoodProduct.carb_g >= min_carb)
         .where(FoodProduct.fat_g <= max_fat)
         .order_by(FoodProduct.avg_rating.desc())
-        .limit(10)
+        .limit(30)
     )
     rows = (await db.execute(stmt)).scalars().all()
     results = _filter_allergens(rows, user_allergens)[:3]
@@ -138,7 +138,7 @@ async def _query_personalized(
         .where(FoodProduct.protein_g >= min_protein)
         .where(FoodProduct.carb_g >= min_carb)
         .order_by(FoodProduct.avg_rating.desc())
-        .limit(10)
+        .limit(30)
     )
     rows2 = (await db.execute(stmt2)).scalars().all()
     results2 = _filter_allergens(rows2, user_allergens)[:3]
@@ -152,7 +152,7 @@ async def _query_personalized(
         .where(FoodProduct.is_available == True)
         .where(FoodProduct.protein_g >= min_protein)
         .order_by(FoodProduct.avg_rating.desc())
-        .limit(10)
+        .limit(30)
     )
     rows3 = (await db.execute(stmt3)).scalars().all()
     results3 = _filter_allergens(rows3, user_allergens)[:3]

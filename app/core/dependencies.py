@@ -33,6 +33,8 @@ async def get_current_user(
     return user
 
 
+# NOTE: This dependency is for optional-auth endpoints only.
+# Do NOT use on protected routes — a missing/expired token silently returns None.
 async def get_optional_user(
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(default=None, alias="Authorization"),
@@ -43,7 +45,9 @@ async def get_optional_user(
     if not authorization:
         return None
     try:
-        token_value = authorization.replace("Bearer ", "").strip()
+        # Strip "Bearer " prefix case-insensitively
+        parts = authorization.split()
+        token_value = parts[-1] if parts else authorization
         payload = decode_token(token_value)
         user_id = payload.get("sub")
         if not user_id:
