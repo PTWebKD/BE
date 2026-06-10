@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
@@ -93,6 +93,15 @@ class SessionOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator("exercises", mode="before")
+    @classmethod
+    def safe_exercises(cls, v):
+        # Catch MissingGreenlet when relationship not eagerly loaded
+        try:
+            return list(v) if v is not None else []
+        except Exception:
+            return []
 
 
 class SessionCompleteOut(BaseModel):
