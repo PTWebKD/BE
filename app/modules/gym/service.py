@@ -62,7 +62,6 @@ async def log_session(db: AsyncSession, user: User, data: SessionCreate) -> Work
     session = WorkoutSession(user_id=user.user_id, **data.model_dump())
     db.add(session)
     await db.flush()
-    session.exercises = []  # new session always has 0 exercises; avoids async lazy-load crash
     return session
 
 

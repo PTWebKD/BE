@@ -78,7 +78,6 @@ class WorkoutSession(Base):
 
     exercises = relationship(
         "ExerciseLog", back_populates="session", cascade="all, delete-orphan",
-        lazy="raise",
     )
 
 
