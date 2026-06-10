@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -199,7 +200,7 @@ async def complete_session(db: AsyncSession, user: User, session_id: int) -> dic
         existing_badges = [b.get("badge") for b in (passport.milestone_badges or [])]
         for days, coins, badge_name in streak_milestones:
             if user.current_streak >= days and badge_name not in existing_badges:
-                user.fitcoin_balance = (user.fitcoin_balance or 0) + coins
+                user.fitcoin_balance = Decimal(str(user.fitcoin_balance or 0)) + Decimal(str(coins))
                 milestone_badges_list = list(passport.milestone_badges or [])
                 milestone_badges_list.append(
                     {"badge": badge_name, "earned_at": datetime.utcnow().isoformat()}
@@ -211,11 +212,11 @@ async def complete_session(db: AsyncSession, user: User, session_id: int) -> dic
     if passport is not None:
         passport.total_sessions = (passport.total_sessions or 0) + 1
         session_volume = sum(
-            s.get("weight", 0) * s.get("reps", 0)
+            float(s.get("weight", 0)) * int(s.get("reps", 0))
             for ex in session.exercises
             for s in (ex.sets or [])
         )
-        passport.total_volume = (passport.total_volume or 0) + session_volume
+        passport.total_volume = Decimal(str(passport.total_volume or 0)) + Decimal(str(session_volume))
 
     # 6. Mark session done
     session.status = SessionStatus.done
