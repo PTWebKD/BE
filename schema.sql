@@ -59,6 +59,8 @@ CREATE TABLE users (
   fitcoin_balance  DECIMAL(12,2)   NOT NULL DEFAULT 0 CHECK (fitcoin_balance >= 0),
   tdee             INT             CHECK (tdee > 0),
   referred_by      INT             REFERENCES users(user_id) ON DELETE SET NULL,
+  last_active_date DATE,
+  allergens        JSONB           NOT NULL DEFAULT '[]',
   created_at       TIMESTAMP       NOT NULL DEFAULT NOW()
 );
 
