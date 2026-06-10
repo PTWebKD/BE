@@ -77,7 +77,8 @@ class WorkoutSession(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     exercises = relationship(
-        "ExerciseLog", back_populates="session", cascade="all, delete-orphan"
+        "ExerciseLog", back_populates="session", cascade="all, delete-orphan",
+        lazy="raise",
     )
 
 
