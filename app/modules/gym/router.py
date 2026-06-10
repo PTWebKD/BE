@@ -69,7 +69,21 @@ async def log_session(
     db: AsyncSession = Depends(get_db),
 ):
     s = await service.log_session(db, user, data)
-    return ok(SessionOut.model_validate(s).model_dump())
+    # Build response manually — avoid model_validate on unflushed ORM object
+    # which triggers async lazy-load of 'exercises' (MissingGreenlet crash)
+    return ok({
+        "session_id": s.session_id,
+        "user_id": s.user_id,
+        "gym_id": s.gym_id,
+        "date": s.date.isoformat(),
+        "duration_min": s.duration_min,
+        "status": s.status.value,
+        "notes": s.notes,
+        "xp_earned": s.xp_earned or 0,
+        "completed_at": s.completed_at,
+        "exercises": [],
+        "created_at": s.created_at.isoformat(),
+    })
 
 
 # 6. GET /sessions/my
