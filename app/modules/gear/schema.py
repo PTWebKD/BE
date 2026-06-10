@@ -41,6 +41,7 @@ class GearItemOut(BaseModel):
     sell_price: Optional[Decimal] = None
     rent_price_day: Optional[Decimal] = None
     deposit_amount: Optional[Decimal] = None
+    images: List[str] = []
     verified: bool
     is_available: bool
     avg_rating: Decimal

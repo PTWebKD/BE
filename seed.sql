@@ -195,25 +195,22 @@ SELECT setval('food_products_product_id_seq', 10);
 -- ============================================================
 -- 9. FOOD_ORDERS
 -- ============================================================
-INSERT INTO food_orders (order_id, user_id, vendor_id, items, subtotal, delivery_fee, total_amount, fitcoin_used, delivery_address, delivery_time, status, payment_method) VALUES
-(1, 1, 3,
+INSERT INTO food_orders (order_id, user_id, guest_phone, vendor_id, items, subtotal, delivery_fee, total_amount, fitcoin_used, delivery_address, delivery_time, status, payment_method) VALUES
+(1, 1, NULL, 3,
   '[{"product_id":1,"qty":1,"price":89000,"name":"Power Protein Bowl"},{"product_id":6,"qty":1,"price":65000,"name":"Pre-Workout Fuel"}]',
   154000, 15000, 169000, 0, '123 Võ Văn Tần, Q3, HCM', '12:00-12:30', 'delivered', 'vnpay'),
 
-(2, 2, 3,
+(2, 2, NULL, 3,
   '[{"product_id":5,"qty":1,"price":72000,"name":"Shred Mode Salad"},{"product_id":7,"qty":1,"price":68000,"name":"Recovery Smoothie Bowl"}]',
   140000, 15000, 155000, 20000, '456 Lê Lợi, Q1, HCM', '13:00-13:30', 'delivered', 'fitcoin'),
 
-(3, 1, 3,
+(3, 1, NULL, 3,
   '[{"product_id":4,"qty":2,"price":115000,"name":"Bulk King Meal"}]',
   230000, 25000, 255000, 0, '123 Võ Văn Tần, Q3, HCM', '18:00-18:30', 'preparing', 'momo'),
 
-(4, NULL, 3,
+(4, NULL, '0912345678', 3,
   '[{"product_id":2,"qty":1,"price":95000,"name":"Keto Warrior Plate"}]',
   95000, 15000, 110000, 0, '789 Nguyễn Huệ, Q1, HCM', '11:00-11:30', 'confirmed', 'cash');
-
--- Order 4 là guest, cần update guest_phone
-UPDATE food_orders SET guest_phone = '0912345678' WHERE order_id = 4;
 
 SELECT setval('food_orders_order_id_seq', 4);
 
@@ -367,7 +364,10 @@ SELECT setval('badges_badge_id_seq', 10);
 
 -- ============================================================
 -- 17. FITCOIN_TRANSACTIONS
+-- Disable trigger tạm thời vì balance đã được set đúng trong bảng users
 -- ============================================================
+ALTER TABLE fitcoin_transactions DISABLE TRIGGER trg_fitcoin_balance;
+
 INSERT INTO fitcoin_transactions (user_id, type, amount, source, reference_id, balance_after, note) VALUES
 -- Alex earn
 (1, 'earn',  100.00, 'challenge',   1,    100.00,  'Hoàn thành Tuần Chiến Binh'),
@@ -377,10 +377,12 @@ INSERT INTO fitcoin_transactions (user_id, type, amount, source, reference_id, b
 (1, 'spend', 300.00, 'food_order',  2,    1930.00, 'Mua Power Protein Bowl'),
 -- Sarah earn
 (2, 'earn',   50.00, 'referral',    NULL, 50.00,   'Giới thiệu bạn thành công'),
-(2, 'spend', 20000.00,'food_order', 2,    0.00,    'Dùng FitCoin mua food'),
+(2, 'spend',  50.00, 'food_order',  2,    0.00,    'Dùng FitCoin mua food'),
 (2, 'earn', 1200.00, 'deposit',     NULL, 1200.00, 'Nạp FitCoin'),
 -- Tony earn từ cho thuê
 (4, 'earn',  238000.00,'gear_rental',1,   238000.00,'Thu từ cho thuê GEAR-K7X2-3841 (trừ 15% hoa hồng)');
+
+ALTER TABLE fitcoin_transactions ENABLE TRIGGER trg_fitcoin_balance;
 
 -- ============================================================
 -- 18. SOCIAL_POSTS
