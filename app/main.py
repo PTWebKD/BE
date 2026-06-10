@@ -30,6 +30,17 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def force_cors_on_errors(request: Request, call_next):
+    response = await call_next(request)
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+    return response
+
+
 @app.exception_handler(Exception)
 async def global_handler(request: Request, exc: Exception):
     from fastapi import HTTPException

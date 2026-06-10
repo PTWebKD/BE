@@ -62,7 +62,13 @@ async def log_session(db: AsyncSession, user: User, data: SessionCreate) -> Work
     session = WorkoutSession(user_id=user.user_id, **data.model_dump())
     db.add(session)
     await db.flush()
-    return session
+    # Re-query with exercises loaded to avoid MissingGreenlet on async lazy-load
+    r = await db.execute(
+        select(WorkoutSession)
+        .where(WorkoutSession.session_id == session.session_id)
+        .options(selectinload(WorkoutSession.exercises))
+    )
+    return r.scalar_one()
 
 
 async def get_my_sessions(db: AsyncSession, user_id: int) -> list:
