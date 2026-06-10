@@ -14,6 +14,7 @@ def ok(data):
     return {"success": True, "data": data}
 
 
+@router.get("")
 @router.get("/")
 async def list_gear(
     category: Optional[str] = Query(None),
